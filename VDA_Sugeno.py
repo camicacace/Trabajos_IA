@@ -116,7 +116,7 @@ class fisInput:
         self.maxValue = max
         self.centroids = centroids
 
-
+    # Muestra las gaussianas
     def view(self):
         x = np.linspace(self.minValue,self.maxValue,20)
         plt.figure()
@@ -163,7 +163,7 @@ class fis:
 
 
         cluster_center = cluster_center[:,:-1]
-        P = data[:,:-1]
+        P = data[:,:-1] # Saco los targets (creo)
         #T = data[:,-1]
         maxValue = np.max(P, axis=0)
         minValue = np.min(P, axis=0)
@@ -248,10 +248,11 @@ fis2 = fis()
 
 # Con esto determinamos el radio de aceptacion para el cluster
 # Mientras mas grande, menos clusters
-radioAceptacion = 0.2
+radioAceptacion = 0.5
 fis2.genfis(data, radioAceptacion)
 
 fis2.viewInputs()
+
 r = fis2.evalfis(np.vstack(data_x))
 
 plt.figure()
@@ -259,7 +260,6 @@ plt.plot(data_x,data_y)
 plt.plot(data_x,r,linestyle='--')
 
 fis2.solutions
-
 
 plt.plot(data_x,data_y)
 plt.show()
