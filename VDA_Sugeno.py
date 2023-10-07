@@ -260,7 +260,6 @@ plt.plot(data_x,r,linestyle='--')
 
 fis2.solutions
 
-plt.plot(data_x,data_y)
-plt.plot(data_x,data_y)
+
 plt.plot(data_x,data_y)
 plt.show()
