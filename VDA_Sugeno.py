@@ -173,8 +173,9 @@ class fis:
         self.entrenar(data)
 
     def entrenar(self, data):
-        P = data[:,:-1]
-        T = data[:,-1]
+        P = data[:,:-1] # datos
+        T = data[:,-1] # targets
+
         #___________________________________________
         # MINIMOS CUADRADOS (lineal)
         sigma = np.array([(i.maxValue-i.minValue)/np.sqrt(8) for i in self.inputs])
@@ -195,12 +196,6 @@ class fis:
 
 
         A = acti*inp/sumMu
-
-        # A = np.zeros((N, 2*n_clusters))
-        # for jdx in range(n_clusters):
-        #     for kdx in range(nVar):
-        #         A[:, jdx+kdx] = nivel_acti[:,jdx]*P[:,kdx]/sumMu
-        #         A[:, jdx+kdx+1] = nivel_acti[:,jdx]/sumMu
 
         b = T
 
@@ -239,10 +234,13 @@ path = 'C:\\Users\\Usuario\\OneDrive\\Desktop\\Cami\\IA\\MisProyectos\\samplesVD
 data_y = cargar_datos(path)
 data_x = genero_datosX(len(data_y))
 
+# INCISO A)
 plt.plot(data_x, data_y)
 plt.xlim(min(data_x),max(data_x))
 
-data = np.vstack((data_x, data_y)).T
+# .T hae una matriz traspuesta
+# Hace que cada valor de x corresponda con el de y
+data = np.vstack((data_x, data_y)).T 
 
 fis2 = fis()
 
@@ -253,11 +251,31 @@ fis2.genfis(data, radioAceptacion)
 
 fis2.viewInputs()
 
-r = fis2.evalfis(np.vstack(data_x))
+resultado = fis2.evalfis(np.vstack(data_x))
 
 plt.figure()
 plt.plot(data_x,data_y)
-plt.plot(data_x,r,linestyle='--')
+plt.plot(data_x,resultado,linestyle='--')
+
+
+
+#--------------------------------
+# Define colores y marcadores para las reglas (puedes personalizarlos)
+colores = ['r', 'g', 'b', 'c', 'm', 'y', 'k','orange', 'purple', 'brown']
+marcadores = ['o', 's', '^', 'v', 'D', 'x', '+', '1', '2']
+
+# Crea un gráfico para cada regla
+for i, centro in enumerate(fis2.rules):
+    plt.scatter(centro[0], centro[0], label=f'Regla {i + 1}', c=colores[i], marker=marcadores[i])
+
+plt.xlabel('Eje X')
+plt.ylabel('Eje Y')
+plt.title('Centros de las Funciones de Membresía por Regla')
+plt.legend()
+plt.grid(True)
+plt.show()
+#-------------------------------
+    
 
 fis2.solutions
 
