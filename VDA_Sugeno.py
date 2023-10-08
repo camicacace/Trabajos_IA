@@ -1,12 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import pandas
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 import time
 
 from scipy.spatial import distance_matrix
 
-#-------------------------------------- Agregado ------------------------------------------------------
+# -------------------------------------- Agregado ------------------------------------------------------
+
+
 def cargar_datos(path):
     datos = []
 
@@ -22,15 +25,31 @@ def cargar_datos(path):
         datos = np.array(datos)
     return datos
 
+
 def genero_datosX(cantidad):
     datos_x = []
     valorx = 0
     for i in range(cantidad):
         datos_x.append(valorx)
         valorx = valorx+2.5
-    return datos_x    
+    return datos_x
 
-#-------------------------------------- Substractive Clustering --------------------------------------------------------
+
+def dividir_datos(datos, porcentaje):
+    datos_test = []
+    cant_datos_test = int(len(datos)*porcentaje)
+
+    # Selecciona datos de test al azar
+    data_frame = pandas.DataFrame(datos)
+    filas_aleatorias = data_frame.sample(n=cant_datos_test)
+    datos_test = filas_aleatorias.values
+
+    datos_training = []
+    [datos_training.append(x) for x in datos if x not in datos_test]
+    return np.array(datos_training), np.array(datos_test)
+
+# -------------------------------------- Substractive Clustering --------------------------------------------------------
+
 
 def subclust2(data, Ra, Rb=0, AcceptRatio=0.3, RejectRatio=0.1):
     # Si Rb no se proporciona, se establece como un 15% más grande que Ra
@@ -63,7 +82,9 @@ def subclust2(data, Ra, Rb=0, AcceptRatio=0.3, RejectRatio=0.1):
         pAnt = p
         if restarP:
             # Restar el potencial del centro seleccionado de la matriz de potenciales
-            P = P - p * np.array([np.exp(-np.linalg.norm(v - C) ** 2 / (Rb / 2) ** 2) for v in ndata])
+            P = P - p * \
+                np.array([np.exp(-np.linalg.norm(v - C) ** 2 / (Rb / 2) ** 2)
+                         for v in ndata])
         restarP = True
 
         # Seleccionar el punto con el mayor potencial como posible centro
@@ -100,45 +121,42 @@ def subclust2(data, Ra, Rb=0, AcceptRatio=0.3, RejectRatio=0.1):
     # Devolver etiquetas de cluster y centros
     return labels, centers
 
-#------------------------------------------ SUGENO -------------------------------------------------------
+# ------------------------------------------ SUGENO -------------------------------------------------------
+
 
 def gaussmf(data, mean, sigma):
     return np.exp(-((data - mean)**2.) / (2 * sigma**2.))
 
-class fisRule:
-    def __init__(self, centroid, sigma):
-        self.centroid = centroid
-        self.sigma = sigma
 
 class fisInput:
-    def __init__(self, min,max, centroids):
+    def __init__(self, min, max, centroids):
         self.minValue = min
         self.maxValue = max
         self.centroids = centroids
 
     # Muestra las gaussianas
     def view(self):
-        x = np.linspace(self.minValue,self.maxValue,20)
+        x = np.linspace(self.minValue, self.maxValue, 20)
         plt.figure()
         for m in self.centroids:
             s = (self.minValue-self.maxValue)/8**0.5
-            y = gaussmf(x,m,s)
-            plt.plot(x,y)
+            y = gaussmf(x, m, s)
+            plt.plot(x, y)
+
 
 class fis:
     def __init__(self):
-        self.rules=[]
+        self.rules = []
         self.memberfunc = []
         self.inputs = []
-
-
 
     def genfis(self, data, radii):
 
         start_time = time.time()
         labels, cluster_center = subclust2(data, radii)
 
-        print("--- %s seconds ---" % (time.time() - start_time))
+        # Este print podemos borrarlo?
+        # print("--- %s seconds ---" % (time.time() - start_time))
         n_clusters = len(cluster_center)
 
         # ------------------------------- Grafico con los clusters --------------------------------
@@ -147,10 +165,12 @@ class fis:
         fig, ax = plt.subplots()
 
         # Graficar los datos
-        ax.scatter(data[:, 0], data[:, 1], c=labels, cmap='viridis', label='Datos')
+        ax.scatter(data[:, 0], data[:, 1], c=labels,
+                   cmap='viridis', label='Datos')
 
         # Graficar los centros de los clusters
-        ax.scatter(cluster_center[:, 0], cluster_center[:, 1], c='red', marker='x', s=100, label='Centros de Clusters')
+        ax.scatter(cluster_center[:, 0], cluster_center[:, 1],
+                   c='red', marker='x', s=100, label='Centros de Clusters')
 
         ax.set_xlabel('Eje X')
         ax.set_ylabel('Eje Y')
@@ -161,123 +181,156 @@ class fis:
 
         # ----------------------------------- termino de graficar ----------------------------------------
 
-
-        cluster_center = cluster_center[:,:-1]
-        P = data[:,:-1] # Saco los targets (creo)
-        #T = data[:,-1]
+        cluster_center = cluster_center[:, :-1]
+        P = data[:, :-1]  # Saco los targets (creo)
+        # T = data[:,-1]
         maxValue = np.max(P, axis=0)
         minValue = np.min(P, axis=0)
 
-        self.inputs = [fisInput(maxValue[i], minValue[i],cluster_center[:,i]) for i in range(len(maxValue))]
+        self.inputs = [fisInput(
+            maxValue[i], minValue[i], cluster_center[:, i]) for i in range(len(maxValue))]
         self.rules = cluster_center
         self.entrenar(data)
 
     def entrenar(self, data):
-        P = data[:,:-1] # datos
-        T = data[:,-1] # targets
+        P = data[:, :-1]  # datos
+        T = data[:, -1]  # targets
 
-        #___________________________________________
+        # ___________________________________________
         # MINIMOS CUADRADOS (lineal)
-        sigma = np.array([(i.maxValue-i.minValue)/np.sqrt(8) for i in self.inputs])
-        f = [np.prod(gaussmf(P,cluster,sigma),axis=1) for cluster in self.rules]
+        sigma = np.array([(i.maxValue-i.minValue)/np.sqrt(8)
+                         for i in self.inputs])
+        f = [np.prod(gaussmf(P, cluster, sigma), axis=1)
+             for cluster in self.rules]
 
+        # podemos borrar todos los prints?
         nivel_acti = np.array(f).T
         print("nivel acti")
         print(nivel_acti)
-        sumMu = np.vstack(np.sum(nivel_acti,axis=1))
+        sumMu = np.vstack(np.sum(nivel_acti, axis=1))
         print("sumMu")
         print(sumMu)
         P = np.c_[P, np.ones(len(P))]
         n_vars = P.shape[1]
 
-        orden = np.tile(np.arange(0,n_vars), len(self.rules))
-        acti = np.tile(nivel_acti,[1,n_vars])
+        orden = np.tile(np.arange(0, n_vars), len(self.rules))
+        acti = np.tile(nivel_acti, [1, n_vars])
         inp = P[:, orden]
-
 
         A = acti*inp/sumMu
 
         b = T
 
-        solutions, residuals, rank, s = np.linalg.lstsq(A,b,rcond=None)
-        self.solutions = solutions #.reshape(n_clusters,n_vars)
-        print(solutions)
+        solutions, residuals, rank, s = np.linalg.lstsq(A, b, rcond=None)
+        self.solutions = solutions  # .reshape(n_clusters,n_vars)
+        # podemos borrar esto?
+        # print(solutions)
         return 0
 
     def evalfis(self, data):
-        sigma = np.array([(input.maxValue-input.minValue) for input in self.inputs])/np.sqrt(8)
-        f = [np.prod(gaussmf(data,cluster,sigma),axis=1) for cluster in self.rules]
+        sigma = np.array([(input.maxValue-input.minValue)
+                         for input in self.inputs])/np.sqrt(8)
+        f = [np.prod(gaussmf(data, cluster, sigma), axis=1)
+             for cluster in self.rules]
         nivel_acti = np.array(f).T
-        sumMu = np.vstack(np.sum(nivel_acti,axis=1))
+        sumMu = np.vstack(np.sum(nivel_acti, axis=1))
 
         P = np.c_[data, np.ones(len(data))]
 
         n_vars = P.shape[1]
         n_clusters = len(self.rules)
 
-        orden = np.tile(np.arange(0,n_vars), n_clusters)
-        acti = np.tile(nivel_acti,[1,n_vars])
+        orden = np.tile(np.arange(0, n_vars), n_clusters)
+        acti = np.tile(nivel_acti, [1, n_vars])
         inp = P[:, orden]
         coef = self.solutions
 
-        return np.sum(acti*inp*coef/sumMu,axis=1)
-
+        return np.sum(acti*inp*coef/sumMu, axis=1)
 
     def viewInputs(self):
         for input in self.inputs:
             input.view()
 
+    def calcular_mse(self, datos, salidas):
+        error = mean_squared_error(datos[:, 1], salidas)
+        plt.figure()
+        plt.scatter(datos[:, 0], datos[:, 1], label='Targets', c='m')
+        plt.scatter(datos[:, 0], salidas,
+                    label='Salida del modelo', c='orange')
 
-#-------------------------------------------- MAIN -------------------------------------------------------
+        # Grafica las lineas entre el target y la salida del modelo
+        # Si se equivocan con mas del 20% lo marca en rojo
+        for i, point in enumerate(datos[:, 0]):
+            x = datos[i, 0]
+            y = datos[i, 1]
+            color = 'red' if abs(salidas[i]-y)/100 > 0.2 else 'green'
+            plt.plot([x, x], [y, salidas[i]], c=color,
+                     alpha=0.5, linestyle='--')
 
-path = 'C:\\Users\\Usuario\\OneDrive\\Desktop\\Cami\\IA\\MisProyectos\\samplesVDA1.txt'
+        plt.xlabel('Tiempo [T]')
+        plt.ylabel('VDA')
+        plt.title('Targets vs Salida del modelo')
+        plt.text(200, 620, f'MSE = {error}', bbox={
+                 'facecolor': 'oldlace', 'alpha': 0.5, 'pad': 8})
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+        return error
+
+
+def generarSugeno(data_train, data_test, radio):
+    """Genera un modelo de Sugeno en base a los datos y el radio del clustering sustractivo
+    -return: fis, mse"""
+
+    sugeno = fis()
+    # Con esto determinamos el radio de aceptacion para el cluster
+    # Mientras mas grande, menos clusters
+    sugeno.genfis(data_train, radio)
+
+    # fis.viewInputs()
+    salidas = sugeno.evalfis(np.vstack(data_test[:, 0]))
+    return sugeno, sugeno.calcular_mse(data_test, salidas)
+
+
+def graficarDatos(datos, xlabel, ylabel, title):
+    plt.plot(datos[:, 0], datos[:, 1])
+    # plt.xlim(min(datos[:,0]),max(datos[:,0]))
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+# -------------------------------------------- MAIN -------------------------------------------------------
+
+
+path = 'samplesVDA1.txt'
+
 data_y = cargar_datos(path)
 data_x = genero_datosX(len(data_y))
-
-# INCISO A)
-plt.plot(data_x, data_y)
-plt.xlim(min(data_x),max(data_x))
-
 # .T hae una matriz traspuesta
 # Hace que cada valor de x corresponda con el de y
-data = np.vstack((data_x, data_y)).T 
+data = np.vstack((data_x, data_y)).T
 
-fis2 = fis()
+# INCISO A)
+graficarDatos(data,'Tiempo [t]','VDA','Mediciones de VDA')
 
-# Con esto determinamos el radio de aceptacion para el cluster
-# Mientras mas grande, menos clusters
-radioAceptacion = 0.5
-fis2.genfis(data, radioAceptacion)
+# INCISO B)
+# separa en train y test
+data_train, data_test = dividir_datos(data, 0.4)
+radios = [0.1, 0.25, 0.5, 1, 2] #se me ocurrieron estos valores, podemos poner otros
+errores = []
+for radio in radios:
+    modelo, mse = generarSugeno(data_train, data_test, radio)
+    errores.append(mse)
 
-fis2.viewInputs()
+estadisticas = np.vstack((radios, errores)).T
+graficarDatos(estadisticas,'Radio de vecindad', 'MSE', 'MSE vs R')
 
-resultado = fis2.evalfis(np.vstack(data_x))
+minimo = np.argmin(np.array(estadisticas)[:,1])
 
-plt.figure()
-plt.plot(data_x,data_y)
-plt.plot(data_x,resultado,linestyle='--')
+print(f'El mejor modelo es el de R = {radios[minimo]} y MSE = {errores[minimo]}')
 
-
-
-#--------------------------------
-# Define colores y marcadores para las reglas (puedes personalizarlos)
-colores = ['r', 'g', 'b', 'c', 'm', 'y', 'k','orange', 'purple', 'brown']
-marcadores = ['o', 's', '^', 'v', 'D', 'x', '+', '1', '2']
-
-# Crea un gráfico para cada regla
-for i, centro in enumerate(fis2.rules):
-    plt.scatter(centro[0], centro[0], label=f'Regla {i + 1}', c=colores[i], marker=marcadores[i])
-
-plt.xlabel('Eje X')
-plt.ylabel('Eje Y')
-plt.title('Centros de las Funciones de Membresía por Regla')
-plt.legend()
-plt.grid(True)
-plt.show()
-#-------------------------------
-    
-
-fis2.solutions
-
-plt.plot(data_x,data_y)
-plt.show()
+# plt.plot(data_x,data_y)
+# plt.show()
