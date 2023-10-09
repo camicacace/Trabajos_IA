@@ -15,7 +15,6 @@ def cargar_datos(path):
 
     # Abre el archivo y lee los datos
     with open(path, "r") as file:
-        valorx = 0
         for linea in file:
             # Convierte los valores de cadena a números de punto flotante
             valory = float(linea.strip())
@@ -151,12 +150,7 @@ class fis:
 
     def genfis(self, data, radii):
 
-        start_time = time.time()
         labels, cluster_center = subclust2(data, radii)
-
-        # Este print podemos borrarlo?
-        # print("--- %s seconds ---" % (time.time() - start_time))
-        n_clusters = len(cluster_center)
 
         # ------------------------------- Grafico con los clusters --------------------------------
 
@@ -206,13 +200,8 @@ class fis:
         f = [np.prod(gaussmf(P, cluster, sigma), axis=1)
              for cluster in self.rules]
 
-        # podemos borrar todos los prints?
         nivel_acti = np.array(f).T
-        # print("nivel acti")
-        # print(nivel_acti)
         sumMu = np.vstack(np.sum(nivel_acti, axis=1))
-        # print("sumMu")
-        # print(sumMu)
         P = np.c_[P, np.ones(len(P))]
         n_vars = P.shape[1]
 
@@ -225,9 +214,7 @@ class fis:
         b = T
 
         solutions, residuals, rank, s = np.linalg.lstsq(A, b, rcond=None)
-        self.solutions = solutions  # .reshape(n_clusters,n_vars)
-        # podemos borrar esto?
-        # print(solutions)
+        self.solutions = solutions  
         return 0
 
     def evalfis(self, data):
@@ -290,8 +277,6 @@ def generarSugeno(data_train, data_test, radio):
     # Con esto determinamos el radio de aceptacion para el cluster
     # Mientras mas grande, menos clusters
     sugeno.genfis(data_train, radio)
-
-    # fis.viewInputs()
     salidas = sugeno.evalfis(np.vstack(data_test[:, 0]))
     return sugeno, sugeno.calcular_mse(data_test, salidas)
 
@@ -302,7 +287,6 @@ def graficarDatos(datos, xlabel, ylabel, title, plot=False):
         plt.plot(datos[:, 0], datos[:, 1])
     else:
         plt.scatter(datos[:, 0], datos[:, 1])
-    # plt.xlim(min(datos[:,0]),max(datos[:,0]))
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
@@ -326,7 +310,7 @@ graficarDatos(data,'Tiempo [ms]','VDA','Mediciones de VDA')
 # INCISO B)
 # separa en train y test
 data_train, data_test = dividir_datos(data, 0.4)
-radios = [0.1, 0.25, 0.5, 1, 2] #se me ocurrieron estos valores, podemos poner otros
+radios = [0.1, 0.25, 0.5, 1, 1.5, 2] #se me ocurrieron estos valores, podemos poner otros
 errores = []
 modelos = []
 for radio in radios:
@@ -346,5 +330,3 @@ sobremuestra = np.arange(min(data_x),max(data_x),0.1)
 salidas = modelos[minimo].evalfis(np.vstack(sobremuestra))
 graficarDatos(np.vstack((sobremuestra,salidas)).T, 'Tiempo [ms]', 'VDA', 'Sobremuestreo')
 
-# plt.plot(data_x,data_y)
-# plt.show()
