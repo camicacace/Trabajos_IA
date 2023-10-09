@@ -135,13 +135,12 @@ class fisInput:
         self.centroids = centroids
 
     # Muestra las gaussianas
-    def view(self):
+    def view(self, ax):
         x = np.linspace(self.minValue, self.maxValue, 20)
-        plt.figure()
         for m in self.centroids:
             s = (self.minValue-self.maxValue)/8**0.5
             y = gaussmf(x, m, s)
-            plt.plot(x, y)
+            ax.plot(x, y)
 
 
 class fis:
@@ -162,22 +161,24 @@ class fis:
         # ------------------------------- Grafico con los clusters --------------------------------
 
         # Crear una figura y un objeto de ejes para el gráfico
-        fig, ax = plt.subplots()
+        fig, (ax1,ax2) = plt.subplots(nrows=2, figsize=(10,5))
 
         # Graficar los datos
-        ax.scatter(data[:, 0], data[:, 1], c=labels,
+        ax1.scatter(data[:, 0], data[:, 1], c=labels,
                    cmap='viridis', label='Datos')
 
         # Graficar los centros de los clusters
-        ax.scatter(cluster_center[:, 0], cluster_center[:, 1],
+        ax1.scatter(cluster_center[:, 0], cluster_center[:, 1],
                    c='red', marker='x', s=100, label='Centros de Clusters')
 
-        ax.set_xlabel('Eje X')
-        ax.set_ylabel('Eje Y')
-        ax.set_title('Gráfico de Datos y Centros de Clusters')
-        ax.legend()
-
-        plt.show()
+        ax1.set_xlabel('Tiempo [ms]')
+        ax1.set_ylabel('VDA')
+        ax1.set_title('Gráfico de Datos y Centros de Clusters')
+        ax1.legend()
+        ax2.set_title('Funciones de pertenencia')
+        ax2.set_xlabel('Tiempo [ms]')
+        ax2.set_ylabel('Pertenencia')
+        ax2.legend()
 
         # ----------------------------------- termino de graficar ----------------------------------------
 
@@ -190,14 +191,16 @@ class fis:
         self.inputs = [fisInput(
             maxValue[i], minValue[i], cluster_center[:, i]) for i in range(len(maxValue))]
         self.rules = cluster_center
+
+        self.viewInputs(ax2)
+        plt.show()
+
         self.entrenar(data)
 
     def entrenar(self, data):
         P = data[:, :-1]  # datos
         T = data[:, -1]  # targets
 
-        # ___________________________________________
-        # MINIMOS CUADRADOS (lineal)
         sigma = np.array([(i.maxValue-i.minValue)/np.sqrt(8)
                          for i in self.inputs])
         f = [np.prod(gaussmf(P, cluster, sigma), axis=1)
@@ -205,11 +208,11 @@ class fis:
 
         # podemos borrar todos los prints?
         nivel_acti = np.array(f).T
-        print("nivel acti")
-        print(nivel_acti)
+        # print("nivel acti")
+        # print(nivel_acti)
         sumMu = np.vstack(np.sum(nivel_acti, axis=1))
-        print("sumMu")
-        print(sumMu)
+        # print("sumMu")
+        # print(sumMu)
         P = np.c_[P, np.ones(len(P))]
         n_vars = P.shape[1]
 
@@ -247,13 +250,13 @@ class fis:
 
         return np.sum(acti*inp*coef/sumMu, axis=1)
 
-    def viewInputs(self):
+    def viewInputs(self, ax):
         for input in self.inputs:
-            input.view()
+            input.view(ax)
 
     def calcular_mse(self, datos, salidas):
         error = mean_squared_error(datos[:, 1], salidas)
-        plt.figure()
+        plt.figure(figsize=(10,5))
         plt.scatter(datos[:, 0], datos[:, 1], label='Targets', c='m')
         plt.scatter(datos[:, 0], salidas,
                     label='Salida del modelo', c='orange')
@@ -267,7 +270,7 @@ class fis:
             plt.plot([x, x], [y, salidas[i]], c=color,
                      alpha=0.5, linestyle='--')
 
-        plt.xlabel('Tiempo [T]')
+        plt.xlabel('Tiempo [ms]')
         plt.ylabel('VDA')
         plt.title('Targets vs Salida del modelo')
         plt.text(200, 620, f'MSE = {error}', bbox={
@@ -293,8 +296,12 @@ def generarSugeno(data_train, data_test, radio):
     return sugeno, sugeno.calcular_mse(data_test, salidas)
 
 
-def graficarDatos(datos, xlabel, ylabel, title):
-    plt.plot(datos[:, 0], datos[:, 1])
+def graficarDatos(datos, xlabel, ylabel, title, plot=False):
+    plt.figure(figsize=(10,5))
+    if plot:
+        plt.plot(datos[:, 0], datos[:, 1])
+    else:
+        plt.scatter(datos[:, 0], datos[:, 1])
     # plt.xlim(min(datos[:,0]),max(datos[:,0]))
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -314,23 +321,30 @@ data_x = genero_datosX(len(data_y))
 data = np.vstack((data_x, data_y)).T
 
 # INCISO A)
-graficarDatos(data,'Tiempo [t]','VDA','Mediciones de VDA')
+graficarDatos(data,'Tiempo [ms]','VDA','Mediciones de VDA')
 
 # INCISO B)
 # separa en train y test
 data_train, data_test = dividir_datos(data, 0.4)
 radios = [0.1, 0.25, 0.5, 1, 2] #se me ocurrieron estos valores, podemos poner otros
 errores = []
+modelos = []
 for radio in radios:
     modelo, mse = generarSugeno(data_train, data_test, radio)
     errores.append(mse)
+    modelos.append(modelo)
 
 estadisticas = np.vstack((radios, errores)).T
-graficarDatos(estadisticas,'Radio de vecindad', 'MSE', 'MSE vs R')
+graficarDatos(estadisticas,'Radio de vecindad', 'MSE', 'MSE vs R', plot = True)
 
+# Inciso C)
 minimo = np.argmin(np.array(estadisticas)[:,1])
-
 print(f'El mejor modelo es el de R = {radios[minimo]} y MSE = {errores[minimo]}')
+
+# Inciso D)
+sobremuestra = np.arange(min(data_x),max(data_x),0.1)
+salidas = modelos[minimo].evalfis(np.vstack(sobremuestra))
+graficarDatos(np.vstack((sobremuestra,salidas)).T, 'Tiempo [ms]', 'VDA', 'Sobremuestreo')
 
 # plt.plot(data_x,data_y)
 # plt.show()
