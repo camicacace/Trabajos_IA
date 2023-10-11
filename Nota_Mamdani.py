@@ -26,11 +26,11 @@ total = np.arange(0, 101, 1)
 
 # Generate fuzzy membership function
 conceptReg = fuzz.gaussmf(concept, 0, 4)
-conceptBueno = fuzz.gaussmf(concept, 8, 1.5)
+conceptBueno = fuzz.gaussmf(concept, 6, 1.5)
 conceptExc = fuzz.gaussmf(concept, 10, 1.5)
 
 numericBajo = fuzz.trimf(numeric, [0, 0, 50])
-numericMed = fuzz.trimf(numeric, [30, 55, 80])
+numericMed = fuzz.trimf(numeric, [30, 50, 70])
 numericAlto = fuzz.trimf(numeric, [60, 100, 100])
 
 totalMin = fuzz.trimf(total, [0, 0, 40])
@@ -59,8 +59,10 @@ ax2.legend()
 
 # INFERENCE
 
-notaNumerica = 70
-notaConcepto = 3 
+notaNumerica = 30
+notaConcepto = 9
+
+
 
 concept_level_reg = fuzz.interp_membership(concept, conceptReg, notaConcepto)
 concept_level_bueno = fuzz.interp_membership(concept, conceptBueno, notaConcepto)
@@ -73,28 +75,26 @@ numeric_level_alto = fuzz.interp_membership(numeric, numericAlto, notaNumerica)
 print(f'CONCEPTO REG {concept_level_reg} \n CONCEPTO BUENO {concept_level_bueno} \n CONCEPTO EXC {concept_level_exc} ')
 print(f'NOTA BAJA {numeric_level_bajo} \n NOTA MEDIA {numeric_level_med} \n NOTA ALTA{numeric_level_alto} ')
 
-# CONCEPTO REG 0.7548396019890073 
-# CONCEPTO BUENO 0.0038659201394728076
-# CONCEPTO EXC 1.866446911352057e-05
-# NOTA BAJA 0.0
-# NOTA MEDIA 0.4
-# NOTA ALTA 0.25
-
 
 # Rule 1 -DESAPROBAR
 nota_final_des = np.fmin(numeric_level_bajo, totalMin)
 
+# R2
+# - SR1 Si CONCEPTO es REGULAR y NOTA es MEDIA entonces HABILITADO <-- min|__ max
+# - SR2 Si CONCEPTO es REGULAR y NOTA es ALTA entonces HABILITADO <--min  | 
+
+
 # Rule 2 -HABILITAR
-subrule1 = (concept_level_reg * 0.1 + numeric_level_med * 0.9)
-subrule2 = (concept_level_reg* 0.1 + numeric_level_alto * 0.9)
-# subrule1 or subrule2 --> fmax
-active_rule2 = np.fmax(subrule1, subrule2) 
+subrule1 = np.fmin(concept_level_reg*0.5, numeric_level_med )
+subrule2 = np.fmin(concept_level_reg*0.5, numeric_level_alto ) 
+
+active_rule2 = np.fmax(subrule1, subrule2)  
 
 nota_final_hab = np.fmin(active_rule2, totalMed) 
 
-
+#- SR3 Si CONCEPTO es BUENO y NOTA es ALTA entonces PROMOCION   <-- min 
 # # Rule 3 - PROMOCIONAR 
-subrule3 = (concept_level_exc * 0.1 + numeric_level_med * 0.9) 
+subrule3 = np.fmin(concept_level_exc, numeric_level_med)  #esto sino tmb puede ser multiplicacion?? ssisisi
 active_rule3 = np.fmax(subrule3, numeric_level_alto)
 
 # TRUNCA el grafico de nota final max
