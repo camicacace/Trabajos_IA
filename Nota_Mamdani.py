@@ -33,11 +33,11 @@ numericBajo = fuzz.trimf(numeric, [0, 0, 50])
 numericMed = fuzz.trimf(numeric, [30, 50, 70])
 numericAlto = fuzz.trimf(numeric, [60, 100, 100])
 
-totalMin = fuzz.trimf(total, [0, 0, 40])
+totalMin = fuzz.trapmf(total, [0, 0, 30, 45])
 totalMed = fuzz.trimf(total, [30, 50, 70])
 totalMax = fuzz.trimf(total, [60, 100, 100])
 
-fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, figsize=(8, 9))
+fig, (ax0, ax1, ax2) = plt.subplots(ncols=3, figsize=(8, 9))
 
 ax0.plot(concept, conceptReg, 'b', linewidth=1.5, label='Regular')
 ax0.plot(concept, conceptBueno, 'g', linewidth=1.5, label='Bueno')
@@ -59,8 +59,8 @@ ax2.legend()
 
 # INFERENCE
 
-notaNumerica = 30
-notaConcepto = 9
+notaNumerica = 40
+notaConcepto = 10
 
 
 
@@ -77,6 +77,7 @@ print(f'NOTA BAJA {numeric_level_bajo} \n NOTA MEDIA {numeric_level_med} \n NOTA
 
 
 # Rule 1 -DESAPROBAR
+
 nota_final_des = np.fmin(numeric_level_bajo, totalMin)
 
 # R2
@@ -94,7 +95,7 @@ nota_final_hab = np.fmin(active_rule2, totalMed)
 
 #- SR3 Si CONCEPTO es BUENO y NOTA es ALTA entonces PROMOCION   <-- min 
 # # Rule 3 - PROMOCIONAR 
-subrule3 = np.fmin(concept_level_exc, numeric_level_med)  #esto sino tmb puede ser multiplicacion?? ssisisi
+subrule3 = np.fmin(concept_level_exc, numeric_level_med)
 active_rule3 = np.fmax(subrule3, numeric_level_alto)
 
 # TRUNCA el grafico de nota final max
@@ -133,20 +134,6 @@ ax0.fill_between(total, nota0, aggregated, facecolor='Orange', alpha=0.7)
 ax0.plot([nota, nota], [0, nota_activation], 'k', linewidth=1.5, alpha=0.9)
 ax0.set_title('AGREGACION')
 
-# Generar la función de membresía trapezoidal
-x = np.arange(0, 5.05, 0.1)
-mfx = fuzz.trapmf(x, [2, 2.5, 3, 4.5])
 
-# Calcular el centroide (defuzzificación) - Método del centroide
-defuzz_centroid = fuzz.defuzz(x, mfx, 'centroid')
-
-# Mostrar la función de membresía trapezoidal y el centroide
-plt.figure(figsize=(8, 5))
-plt.plot(x, mfx, 'k')
-plt.vlines(defuzz_centroid, 0, 1, label='centroid', color='r')
-plt.ylabel('Pertenencia difusa')
-plt.xlabel('Variable en el universo (arb)')
-plt.ylim(-0.1, 1.1)
-plt.legend(loc=2)
 
 plt.show()

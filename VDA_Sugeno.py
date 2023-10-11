@@ -169,7 +169,6 @@ class fis:
         ax1.set_ylabel('VDA')
         ax1.set_title('Gráfico de Datos y Centros de Clusters')
         ax1.legend()
-        ax2.set_title('Funciones de pertenencia')
         ax2.set_xlabel('Tiempo [ms]')
         ax2.set_ylabel('Pertenencia')
         ax2.legend()
